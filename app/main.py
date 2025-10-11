@@ -1,28 +1,20 @@
-# main.py (SOLO CAMBIAR ESTE BLOQUE)
+# main.py
 
 from flask import Flask, request
 import requests
 import json
 import os
-# ... (otras importaciones)
+from collections import defaultdict
 
 app = Flask(__name__)
 
-
-# ...
-
-# --- CREDENCIALES LEÍDAS DEL ENTORNO DE RENDER ---
+# --- CREDENCIALES DEL ENTORNO DE RENDER ---
 VERIFY_TOKEN = os.environ.get("VERIFY_TOKEN", "27148101")
-# Usa el nuevo token como default si no lo definimos en Render
 ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN", "EAATPgVJeq5oBPgE15WNBZCCc4ztxe21UgIiac2rDSyoUlFUiztDuhXoEZAFCZBNe0wo2EpgaLOdjXZBmshZCJ2yHsJrXdFDKGM2XmEIzydRz7SDvquqDuHocVwyEyZATsuju4ibHMvS8T0Xhnfd9WZAmSu2Ff9mFnvGBDVWD7AEg7n2ojq9ijs1lCWaRd9x6RzZAEQZDZD")
 ID_NUMERO_TELEFONO = os.environ.get("ID_NUMERO_TELEFONO", "868674859654579")
-# ...
-# ... (El resto del script de la calculadora sigue igual)
-# --- ESTRUCTURA DE LA CALCULADORA ---
-# Estructura temporal (en memoria) para almacenar datos de cada usuario
-# La clave es el número de teléfono del usuario.
-usuarios = {}
 
+# --- ESTRUCTURA DE DATOS EN MEMORIA ---
+usuarios = {}
 
 # 1️⃣ Verificación del Webhook (GET)
 @app.route("/webhook", methods=["GET"])
@@ -31,37 +23,36 @@ def verify():
         return request.args.get("hub.challenge")
     return "Token inválido", 403
 
-
 # 2️⃣ Recibir y Procesar Mensajes (POST)
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
     
-    # Intenta obtener el mensaje del formato de Meta
     try:
-        # Extraer el número de teléfono del remitente
-        phone_number = data["entry"][0]["changes"][0]["value"]["messages"][0]["from"]
-        
-        # Extraer el texto del mensaje (maneja el caso de que no sea un mensaje de texto)
-        message_object = data["entry"][0]["changes"][0]["value"]["messages"][0]
+        entry = data.get("entry", [])[0]
+        changes = entry.get("changes", [])[0]
+        value = changes.get("value", {})
+
+        messages = value.get("messages", [])
+        if not messages:
+            print("No hay mensajes para procesar")
+            return "ok", 200
+
+        message_object = messages[0]
+        phone_number = message_object.get("from")
         text = message_object.get("text", {}).get("body", "")
-        
-        # --- LÓGICA DE LA CALCULADORA ---
-        procesar_mensaje_calculadora(phone_number, text.strip().lower())
+
+        if text.strip():  # Solo procesar si hay texto
+            procesar_mensaje_calculadora(phone_number, text.strip().lower())
 
     except Exception as e:
-        # Esto captura errores si el mensaje no es de texto (ej: sticker, imagen)
-        # o si la estructura del JSON es inesperada.
         print(f"Error al procesar el mensaje: {e}")
-        pass # Simplemente ignoramos el mensaje y devolvemos 'ok'
+        pass  # Siempre devolver 200 a Meta
 
     return "ok", 200
 
-
 # 3️⃣ Lógica del Bot (Máquina de Estados)
 def procesar_mensaje_calculadora(user, msg):
-    
-    # 1. Inicializar el estado del usuario si es nuevo
     if user not in usuarios:
         usuarios[user] = {"estado": "inicio", "datos": {}, "rubro": None}
 
@@ -112,7 +103,6 @@ def procesar_mensaje_calculadora(user, msg):
             respuesta = "Decime el nombre del próximo rubro: *Bebida*, *Comida* o *Postre*."
             u["estado"] = "esperando_rubro"
         elif msg == "no":
-            # Calcular totales
             resumen = calcular_balance_general(u["datos"])
             send_message(user, resumen)
             usuarios.pop(user)  # Limpiar sesión
@@ -122,8 +112,7 @@ def procesar_mensaje_calculadora(user, msg):
         send_message(user, respuesta)
         return
 
-
-# 4️⃣ Función para enviar mensajes (Adaptada de tu script anterior)
+# 4️⃣ Función para enviar mensajes a WhatsApp
 def send_message(to, text):
     url = f"https://graph.facebook.com/v20.0/{ID_NUMERO_TELEFONO}/messages"
     headers = {
@@ -133,17 +122,16 @@ def send_message(to, text):
     data = {
         "messaging_product": "whatsapp",
         "to": to,
-        "type": "text",
         "text": {"body": text}
     }
     try:
         response = requests.post(url, headers=headers, json=data)
-        response.raise_for_status() # Lanza un error para códigos de estado HTTP 4xx/5xx
+        response.raise_for_status()
+        print(f"Mensaje enviado a {to}")
     except requests.exceptions.HTTPError as err:
         print(f"Error al enviar mensaje a WhatsApp: {err}")
 
-
-# --- Funciones de Cálculo (Sin Cambios) ---
+# 5️⃣ Funciones de Cálculo
 def calcular_balance_general(datos):
     total_general = 0
     gastos_por_persona = defaultdict(float)
@@ -160,12 +148,11 @@ def calcular_balance_general(datos):
         return "No se ingresaron datos."
 
     por_persona = total_general / n
-
     saldos = {p: round(gastos_por_persona[p] - por_persona, 2) for p in participantes}
-    
+
     texto = "📊 *Balance general:*\n"
     for p, s in saldos.items():
-        estado = "recibe" if s < 0 else "paga" # Si el saldo es NEGATIVO, le deben; si es POSITIVO, debe pagar para equilibrar.
+        estado = "recibe" if s < 0 else "paga"
         texto += f"- {p}: {estado} ${abs(s):.2f}\n"
 
     transferencias = generar_transferencias(saldos)
@@ -176,35 +163,23 @@ def calcular_balance_general(datos):
     texto += "\n✅ ¡Listo! Todos los saldos quedan equilibrados."
     return texto
 
-
 def generar_transferencias(saldos):
-    # Acreedores (tienen saldo negativo, se les debe) y Deudores (tienen saldo positivo, deben pagar)
     acreedores = sorted([(p, s) for p, s in saldos.items() if s < 0], key=lambda x: x[1])
     deudores = sorted([(p, s) for p, s in saldos.items() if s > 0], key=lambda x: -x[1])
-    
+
     transferencias = []
     i, j = 0, 0
     while i < len(deudores) and j < len(acreedores):
         deudor, deuda = deudores[i]
         acreedor, credito = acreedores[j]
-        
-        # Las deudas son positivas, los créditos son negativos
         monto = min(deuda, abs(credito))
-        
         transferencias.append((deudor, acreedor, monto))
-        
         deudores[i] = (deudor, deuda - monto)
         acreedores[j] = (acreedor, credito + monto)
-        
-        if deudores[i][1] == 0:
-            i += 1
-        if acreedores[j][1] == 0:
-            j += 1
-            
+        if deudores[i][1] == 0: i += 1
+        if acreedores[j][1] == 0: j += 1
     return transferencias
 
-
+# 6️⃣ Ejecutar la app localmente (Gunicorn usará esto en Render)
 if __name__ == "__main__":
-    # La ejecución debe ser vía Gunicorn, pero mantenemos esto por si corres localmente.
-    # En Docker, Gunicorn toma el control.
     app.run(host="0.0.0.0", port=5000)
