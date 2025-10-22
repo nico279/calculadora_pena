@@ -1,17 +1,14 @@
 # main.py
 
-from flask import Flask, request
-import requests
-import json
-import os
-from collections import defaultdict
-
-app = Flask(__name__)
-
+# ...
 # --- CREDENCIALES DEL ENTORNO DE RENDER ---
-VERIFY_TOKEN = os.environ.get("VERIFY_TOKEN", "27148101")
-ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN", "EAATPgVJeq5oBPgE15WNBZCCc4ztxe21UgIiac2rDSyoUlFUiztDuhXoEZAFCZBNe0wo2EpgaLOdjXZBmshZCJ2yHsJrXdFDKGM2XmEIzydRz7SDvquqDuHocVwyEyZATsuju4ibHMvS8T0Xhnfd9WZAmSu2Ff9mFnvGBDVWD7AEg7n2ojq9ijs1lCWaRd9x6RzZAEQZDZD")
-ID_NUMERO_TELEFONO = os.environ.get("ID_NUMERO_TELEFONO", "868674859654579")
+# Usamos os.environ[] para asegurar que la app no inicie si falta alguna variable.
+try:
+    VERIFY_TOKEN = os.environ["VERIFY_TOKEN"]
+    ACCESS_TOKEN = os.environ["ACCESS_TOKEN"]
+    ID_NUMERO_TELEFONO = os.environ["ID_NUMERO_TELEFONO"]
+except KeyError as e:
+    raise RuntimeError(f"Falta la variable de entorno esencial: {e}") from e
 
 # --- ESTRUCTURA DE DATOS EN MEMORIA ---
 usuarios = {}
