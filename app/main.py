@@ -1,14 +1,18 @@
 # main.py
 
-# ...
+import os # <-- ¡Asegúrate de que 'os' esté importado primero!
+from flask import Flask, request
+import requests
+import json
+from collections import defaultdict
+
+app = Flask(__name__)
+
 # --- CREDENCIALES DEL ENTORNO DE RENDER ---
-# Usamos os.environ[] para asegurar que la app no inicie si falta alguna variable.
-try:
-    VERIFY_TOKEN = os.environ["VERIFY_TOKEN"]
-    ACCESS_TOKEN = os.environ["ACCESS_TOKEN"]
-    ID_NUMERO_TELEFONO = os.environ["ID_NUMERO_TELEFONO"]
-except KeyError as e:
-    raise RuntimeError(f"Falta la variable de entorno esencial: {e}") from e
+# Usa os.environ.get() sin el valor por defecto para cargar las credenciales de Render
+VERIFY_TOKEN = os.environ.get("VERIFY_TOKEN") 
+ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN")
+ID_NUMERO_TELEFONO = os.environ.get("ID_NUMERO_TELEFONO")
 
 # --- ESTRUCTURA DE DATOS EN MEMORIA ---
 usuarios = {}
