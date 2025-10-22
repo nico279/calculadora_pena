@@ -115,7 +115,8 @@ def procesar_mensaje_calculadora(user, msg):
 
 # 4️⃣ Función para enviar mensajes a WhatsApp
 def send_message(to, text):
-    url = f"https://graph.facebook.com/v20.0/{ID_NUMERO_TELEFONO}/messages"
+    # url = f"https://graph.facebook.com/v20.0/{ID_NUMERO_TELEFONO}/messages"
+    url = f"https://graph.facebook.com/v24.0/{ID_NUMERO_TELEFONO}/messages"
     headers = {
         "Authorization": f"Bearer {ACCESS_TOKEN}",
         "Content-Type": "application/json"
