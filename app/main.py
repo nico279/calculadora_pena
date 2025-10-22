@@ -10,9 +10,17 @@ app = Flask(__name__)
 
 # --- CREDENCIALES DEL ENTORNO DE RENDER ---
 # Usa os.environ.get() sin el valor por defecto para cargar las credenciales de Render
-VERIFY_TOKEN = os.environ.get("VERIFY_TOKEN") 
+VERIFY_TOKEN = os.environ.get("VERIFY_TOKEN")
 ACCESS_TOKEN = os.environ.get("ACCESS_TOKEN")
 ID_NUMERO_TELEFONO = os.environ.get("ID_NUMERO_TELEFONO")
+
+
+print("=== VARIABLES DE ENTORNO ===")
+print("VERIFY_TOKEN:", VERIFY_TOKEN)
+print("ACCESS_TOKEN presente:", bool(ACCESS_TOKEN))
+print("ID_NUMERO_TELEFONO:", ID_NUMERO_TELEFONO)
+print("============================")
+
 
 # --- ESTRUCTURA DE DATOS EN MEMORIA ---
 usuarios = {}
